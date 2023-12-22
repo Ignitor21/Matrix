@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <exception>
+#include "matrix-exceptions.hpp"
 
 static const double EPSILON = 10E-8;
 
@@ -53,41 +54,51 @@ namespace linal
             ::operator delete(elems);
         }
 
-        MatrixBuf(int r, int c) : rows(r), columns(c), elems( ((r == 0) || (c == 0)) ? nullptr : static_cast<T*>(::operator new(sizeof(T) * r * c))) {}
+        MatrixBuf(int r, int c) : rows(r), columns(c)
+        {
+            if (r <= 0 || c <= 0)
+                throw invalid_size();
+
+            elems = static_cast<T*>(::operator new(sizeof(T) * r * c));
+        }
+    };
+
+    template <typename T = double>
+    class Matrix : private MatrixBuf<T>
+    {
+        using MatrixBuf<T>::rows;
+        using MatrixBuf<T>::columns;
+        using MatrixBuf<T>::elems;
+
+        struct ProxyRow
+        {
+            T *row;
+            const T& operator[](int n) const { return row[n]; }
+            T& operator[](int n) { return row[n]; }
+        };
+
+    public:
+        Matrix(int r, int c) : MatrixBuf<T>(r, c) {}        
+        
+        Matrix(Matrix&& other) = default;
+        Matrix& operator=(Matrix&& other) = default;
+        ~Matrix() = default;
+
+        Matrix(const Matrix& other) : MatrixBuf<T>(other.rows, other.columns)
+        {
+            std::copy(other.elems, other.elems + rows * columns, elems);
+        }
+
+        Matrix& operator= (const Matrix& other)
+        {
+            Matrix<T> tmp{other};
+            std::swap(*this, tmp);
+            return *this;
+        }
+    
+    public:
+        int getRows() const noexcept { return rows; }
+        int getColums() const noexcept { return columns; }
+        ProxyRow operator[] (int n) {return ProxyRow{elems + n*columns};}
     };
 }
-
-//     template <typename T>
-//     std::ostream& operator<< (std::ostream& os, const MatrixBuf<T>& matrix)
-//     {)
-//         int rows = matrix.getRows(), columns = matrix.getColumns();
-
-//         for (int i = 0; i != rows; ++i)
-//         {
-//             for (int j = 0; j != columns; ++j)
-//             {
-//                 os << matrix[i][j] << ' ';
-//             }
-
-//             os << '\n';
-//         }
-
-//         return os;
-//     }
-
-//     template <typename T>
-//     std::istream& operator>> (std::istream& is, MatrixBuf<T>& matrix)
-//     {   
-//         int rows = matrix.getRows(), columns = matrix.getColumns();
-
-//         for (int i = 0; i != rows; ++i)
-//         {
-//             for (int j = 0; j != columns; ++j)
-//             {
-//                 is >> matrix[i][j];
-//             }
-//         }
-
-//         return is;
-//     }
-// }

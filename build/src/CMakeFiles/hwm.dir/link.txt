@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wall -g -O0 -DDEBUG CMakeFiles/hwm.dir/main.cpp.o -o hwm 
