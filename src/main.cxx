@@ -1,5 +1,5 @@
 #include <iostream>
-#include "matrix.hpp"
+#include "matrix.hxx"
 
 using namespace linal;
 

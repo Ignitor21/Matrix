@@ -1,1 +1,1 @@
-add_executable(hwm main.cpp)
+add_executable(hwm main.cxx)

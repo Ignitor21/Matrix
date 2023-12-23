@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <exception>
-#include "matrix-exceptions.hpp"
+#include "matrix-exceptions.hxx"
 
 static const double EPSILON = 10E-8;
 
@@ -23,17 +23,19 @@ namespace linal
     class MatrixBuf
     {
     protected:
-        int rows, columns;
+        int rows, columns, used = 0;
         T* elems;
 
     protected:
         MatrixBuf(const MatrixBuf<T>& other) = delete;
         MatrixBuf<T>& operator= (const MatrixBuf<T>& other) = delete;
 
-        MatrixBuf(MatrixBuf<T>&& other) noexcept : rows(other.rows), columns(other.columns), elems(other.elems)
+        MatrixBuf(MatrixBuf<T>&& other) noexcept
+         : rows(other.rows), columns(other.columns), used(other.used), elems(other.elems)
         {
             other.rows = 0;
             other.columns = 0;
+            other.used = 0;
             other.elems = nullptr;
         }
 
@@ -44,13 +46,14 @@ namespace linal
             
             std::swap(elems, other.elems);
             std::swap(columns, other.columns);
+            std::swap(used, other.used);
             std::swap(rows, other.rows);
             return *this;
         }
 
         ~MatrixBuf()
         {
-            destroy(elems, elems + rows * columns);
+            destroy(elems, elems + used);
             ::operator delete(elems);
         }
 
@@ -68,13 +71,29 @@ namespace linal
     {
         using MatrixBuf<T>::rows;
         using MatrixBuf<T>::columns;
+        using MatrixBuf<T>::used;
         using MatrixBuf<T>::elems;
 
         struct ProxyRow
         {
             T *row;
-            const T& operator[](int n) const { return row[n]; }
-            T& operator[](int n) { return row[n]; }
+            int columns;
+
+            const T& operator[](int n) const 
+            {
+                if ((n < 0) || (n >= columns))
+                    throw invalid_index();
+
+                return row[n];
+            }
+
+            T& operator[](int n)
+            {
+                if ((n < 0) || (n >= columns))
+                    throw invalid_index();
+
+                return row[n];
+            }
         };
 
     public:
@@ -86,7 +105,11 @@ namespace linal
 
         Matrix(const Matrix& other) : MatrixBuf<T>(other.rows, other.columns)
         {
-            std::copy(other.elems, other.elems + rows * columns, elems);
+            while (used < other.used)
+            {
+                construct(elems + used, other.elems[used]);
+                ++used;
+            }
         }
 
         Matrix& operator= (const Matrix& other)
@@ -98,7 +121,46 @@ namespace linal
     
     public:
         int getRows() const noexcept { return rows; }
-        int getColums() const noexcept { return columns; }
-        ProxyRow operator[] (int n) {return ProxyRow{elems + n*columns};}
+        int getColumns() const noexcept { return columns; }
+        ProxyRow operator[] (int n) const 
+        {
+            if ((n < 0) || (n >= rows))
+                throw invalid_index();
+            return ProxyRow{elems + n * columns, columns};
+        }
     };
+
+    template <typename T>
+    std::ostream& operator<< (std::ostream& os, const Matrix<T>& m) 
+    {
+        int cols = m.getColumns(), rows = m.getRows();
+
+        for (int i = 0; i != rows; ++i)
+        {
+            for (int j = 0; j != cols; ++j)
+            {
+                os << m[i][j] << ' ';
+            }
+
+            os << "\n";
+        }
+
+        return os;
+    }
+
+    template <typename T>
+    std::istream& operator>> (std::istream& is, Matrix<T>& m)
+    {
+        int cols = m.getColumns(), rows = m.getRows();
+
+        for (int i = 0; i != rows; ++i)
+        {
+            for (int j = 0; j != cols; ++j)
+            {
+                is >> m[i][j];
+            }
+        }
+
+        return is;
+    }
 }
