@@ -1,10 +1,25 @@
 #pragma once
 
+
+/*
+TO-DO:
+- unit tests for big five
+- end-to-end tests
+- 
+*/
+
 #include <iostream>
 #include <exception>
+#include <cmath>
+#include <utility>
 #include "matrix-exceptions.hxx"
 
 static const double EPSILON = 10E-8;
+
+bool is_equal(double lhs, double rhs)
+{
+    return (std::fabs(rhs - lhs) < EPSILON);
+}
 
 namespace linal
 {
@@ -67,7 +82,7 @@ namespace linal
     };
 
     template <typename T = double>
-    class Matrix : private MatrixBuf<T>
+    class Matrix final : private MatrixBuf<T>
     {
         using MatrixBuf<T>::rows;
         using MatrixBuf<T>::columns;
@@ -128,8 +143,67 @@ namespace linal
                 throw invalid_index();
             return ProxyRow{elems + n * columns, columns};
         }
+
+        double determinant() const;
+
+    private:
+        double diag_mult() const;
+        bool gauss_jordan();
+        std::pair<int, int> max_abs_elem_in_column(int column_index, int height) const;
     };
 
+    template <typename T>
+    double Matrix<T>::determinant() const
+    {
+        if (rows != columns)
+            throw nonsquare_matrix();
+        
+        Matrix<T> tmp{*this};
+        bool is_zero = tmp.gauss_jordan();
+
+        if (is_zero)
+            return 0;
+
+        double ans = diag_mult(tmp);
+
+        return ans;
+    }
+
+    template <typename T>
+    double Matrix<T>::diag_mult() const
+    {
+        double ans = 1;
+        for (int i = 0; i != rows * rows; i += rows + 1)
+        {
+            ans *= elems[i];
+        }
+
+        return ans;
+    }
+
+    template <typename T>
+    bool gauss_jordan()
+    {
+        return 1;
+    }
+
+    template <typename T>
+    std::pair<int, int> Matrix<T>::max_abs_elem_in_column(int column_index, int height) const
+    {
+        T *cur = elems + column_index * (columns + 1);
+        T max_elem{};
+
+        for(int i = column_index; i != rows; i += 1, cur += columns)
+        {
+            if (std::fabs(*cur) > max_elem)
+                max_elem = *cur;
+        }
+    }    
+/*
+    1 2 3
+    4 5 6
+    7 8 9
+*/ 
     template <typename T>
     std::ostream& operator<< (std::ostream& os, const Matrix<T>& m) 
     {

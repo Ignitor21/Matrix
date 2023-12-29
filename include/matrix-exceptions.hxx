@@ -12,5 +12,10 @@ namespace linal
     {
         invalid_index() : std::out_of_range("Index out of range") {}
     };
+
+    struct nonsquare_matrix : public std::runtime_error
+    {
+        nonsquare_matrix() : std::runtime_error("Matrix must be square to call this function") {}
+    };
 }
 
