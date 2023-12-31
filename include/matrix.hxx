@@ -24,7 +24,7 @@ bool is_equal(double lhs, double rhs)
 namespace linal
 {
 
-    template <typename T> void construct(T *p, const T &rhs) { new (p) T(rhs); }
+    template <typename T> void construct(T *p, const T& rhs) { new (p) T(rhs); }
 
     template <class T> void destroy(T *p) noexcept { p->~T(); }
 
@@ -72,7 +72,7 @@ namespace linal
             ::operator delete(elems);
         }
 
-        MatrixBuf(int r, int c) : rows(r), columns(c)
+        MatrixBuf(int r, int c) : rows(r), columns(c), used(r*c)
         {
             if (r <= 0 || c <= 0)
                 throw invalid_size();
@@ -120,11 +120,8 @@ namespace linal
 
         Matrix(const Matrix& other) : MatrixBuf<T>(other.rows, other.columns)
         {
-            while (used < other.used)
-            {
+            for(used = 0; used < other.used; ++used)
                 construct(elems + used, other.elems[used]);
-                ++used;
-            }
         }
 
         Matrix& operator= (const Matrix& other)
@@ -148,8 +145,10 @@ namespace linal
 
     private:
         double diag_mult() const;
-        bool gauss_jordan();
-        std::pair<int, int> max_abs_elem_in_column(int column_index, int height) const;
+        bool gauss_jordan(int& number_of_swaps);
+        int max_abs_elem_in_column(int column_index) const;
+        bool swap_rows(int i, int j);
+        void eleminate(int i);
     };
 
     template <typename T>
@@ -159,12 +158,19 @@ namespace linal
             throw nonsquare_matrix();
         
         Matrix<T> tmp{*this};
-        bool is_zero = tmp.gauss_jordan();
+        #ifdef DEBUG
+            std::cout << tmp << "\n";
+        #endif
+        int number_of_swaps{};
+        bool is_zero = tmp.gauss_jordan(number_of_swaps);
 
         if (is_zero)
             return 0;
 
-        double ans = diag_mult(tmp);
+        double ans = tmp.diag_mult();
+
+        if (number_of_swaps % 2 == 1)
+            ans *= -1;
 
         return ans;
     }
@@ -173,37 +179,95 @@ namespace linal
     double Matrix<T>::diag_mult() const
     {
         double ans = 1;
-        for (int i = 0; i != rows * rows; i += rows + 1)
+        for (int i = 0; i < rows * rows; i += rows + 1)
         {
             ans *= elems[i];
         }
 
+        #ifdef DEBUG
+            std::cout << "Diag mult: " << ans << "\n";
+        #endif
         return ans;
     }
 
     template <typename T>
-    bool gauss_jordan()
+    bool Matrix<T>::gauss_jordan(int& number_of_swaps)
     {
-        return 1;
+        for (int i = 0; i != columns; ++i)
+        {
+            int max_elem_index = max_abs_elem_in_column(i);
+
+            if (is_equal(elems[max_elem_index * columns + i], 0))
+                return true;
+            
+            number_of_swaps += swap_rows(max_elem_index, i); 
+            #ifdef DEBUG
+                std::cout << *this << "\n";
+            #endif
+
+            eleminate(i);
+            #ifdef DEBUG
+                std::cout << *this << "\n";
+            #endif
+        }
+
+        return false;
+
     }
 
     template <typename T>
-    std::pair<int, int> Matrix<T>::max_abs_elem_in_column(int column_index, int height) const
+    int Matrix<T>::max_abs_elem_in_column(int column_index) const
     {
         T *cur = elems + column_index * (columns + 1);
+        int ans{};
         T max_elem{};
 
-        for(int i = column_index; i != rows; i += 1, cur += columns)
+        for(int i = column_index; i < rows; i += 1, cur += columns)
         {
-            if (std::fabs(*cur) > max_elem)
-                max_elem = *cur;
+            T cur_elem_abs = std::fabs(*cur);
+            if (cur_elem_abs > max_elem)
+            {
+                max_elem = cur_elem_abs;
+                ans = i;
+            }
         }
-    }    
-/*
-    1 2 3
-    4 5 6
-    7 8 9
-*/ 
+        #ifdef DEBUG
+            std::cout << "Max element in column: " << column_index << " is " << max_elem << "\n";
+        #endif
+        return ans;
+    }
+
+    template <typename T>
+    bool Matrix<T>::swap_rows(int i, int j)
+    {
+        if(i == j)
+            return false;
+        
+        T* first_row = elems + i * columns;
+        T* second_row = elems + j * columns;
+
+        for (int k = 0; k < columns; ++k)
+            std::swap(first_row[k], second_row[k]);
+        
+        return true;
+    }
+
+    template <typename T>
+    void Matrix<T>::eleminate(int i)
+    {
+        for (int j = i + 1; j < rows; ++j)
+        {
+            T pivot = elems[i * (columns + 1)];
+            T k = -1 * elems[ j*columns + i ] / pivot;
+
+            if (k == 0)
+                continue;
+
+            for (int m = i; m < columns; ++m)
+                elems[j * columns + m] += elems[i * columns + m] * k;
+        }
+    }
+
     template <typename T>
     std::ostream& operator<< (std::ostream& os, const Matrix<T>& m) 
     {
@@ -213,7 +277,7 @@ namespace linal
         {
             for (int j = 0; j != cols; ++j)
             {
-                os << m[i][j] << ' ';
+                os << std::fixed << m[i][j] << ' ';
             }
 
             os << "\n";
