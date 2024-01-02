@@ -22,5 +22,5 @@ find_package(GTest REQUIRED)
 enable_testing()
 
 include_directories(include)
-add_subdirectory(src)
+add_executable(${PROJECT_NAME} src/main.cxx)
 add_subdirectory(unit-tests)

@@ -1,17 +1,10 @@
 #pragma once
 
-
-/*
-TO-DO:
-- unit tests for big five
-- end-to-end tests
-- 
-*/
-
 #include <iostream>
 #include <exception>
 #include <cmath>
 #include <utility>
+#include <iomanip>
 #include "matrix-exceptions.hxx"
 
 static const double EPSILON = 10E-8;
@@ -56,7 +49,7 @@ namespace linal
 
         MatrixBuf<T>& operator= (MatrixBuf<T>&& other) noexcept
         {
-            if (*this == other)
+            if (this == &   other)
                 return *this;
             
             std::swap(elems, other.elems);
@@ -277,7 +270,7 @@ namespace linal
         {
             for (int j = 0; j != cols; ++j)
             {
-                os << std::fixed << m[i][j] << ' ';
+                std::cout << m[i][j] << ' ';
             }
 
             os << "\n";
@@ -300,5 +293,31 @@ namespace linal
         }
 
         return is;
+    }
+
+    template <typename T>
+    bool operator== (const Matrix<T>& lhs, const Matrix<T>& rhs)
+    {
+        if((lhs.getRows() != rhs.getRows()) || (lhs.getColumns() != lhs.getColumns()))
+            return false;
+
+        int rows = lhs.getRows(), columns = lhs.getColumns();
+
+        for (int i = 0; i != rows; ++i)
+        {
+            for (int j = 0; j != columns; ++j)
+            {
+                if (lhs[i][j] != rhs[i][j])
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    template <typename T>
+    bool operator!= (const Matrix<T>& lhs, const Matrix<T>& rhs)
+    {
+        return !(lhs == rhs);
     }
 }
