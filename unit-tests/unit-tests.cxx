@@ -69,6 +69,15 @@ TEST(MATRIX_BIG_FIVE, move_assignment)
     EXPECT_TRUE(m1 == m);
 }
 
+TEST(MATRIX_DET, int_value)
+{
+    Matrix<int> m(3, 3);
+    fill_matrix(m);
+    m[2][2] = 11;
+    double ans = m.determinant();
+    EXPECT_EQ(ans, -9);
+}
+
 int main(int argc, char** argv)
 {   
     testing::InitGoogleTest(&argc, argv);
